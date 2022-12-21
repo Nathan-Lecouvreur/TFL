@@ -1,0 +1,188 @@
+---
+title: "DESeq ES cells genom analysis"
+output: html_notebook
+---
+
+
+Importing the data with and without DESeq
+
+```{r}
+library(dplyr)
+
+
+df_es_deseq_genom <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refgenom.csv",
+                        sep = ";")
+
+
+df_es_deseq_genom <- select(df_es_deseq_genom, 
+                      c(chromosome, deb, fin, pvalFDR_DESeq, FC))
+
+colnames(df_es_deseq_genom) <- c("chromosome", "deb", "fin", "pval_DEseq", "FC_DEseq")
+
+
+
+
+
+df_es_edger <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-sansDEseq/listHRS_ES_genom.csv",
+                        sep = ";")
+
+df_es_edger <- select(df_es_edger, 
+                      c(chromosome, deb, fin, pvalFDR_edgeR_exact, FC))
+
+colnames(df_es_edger) <- c("chromosome", "deb", "fin", "pval_edgeR", "FC_edgeR")
+
+
+df_es_combined_genom <- bind_rows(df_es_deseq_genom, df_es_edger)
+
+
+```
+
+
+
+
+
+```{r}
+library(ggplot2)
+library(ggpointdensity)
+library(viridis)
+library(ggExtra)
+
+
+volcano_DEseq_genom <- ggplot(data = df_es_deseq_genom,
+                        mapping = aes(y = -log10(pval_DEseq),
+                                      x = log2(FC_DEseq))) +
+                 geom_point() +
+                 geom_pointdensity() +
+                 scale_color_viridis() +
+                 scale_x_continuous(limits = c(0, 10))+
+                 ylim(c(0,40))
+
+volcano_DEseq_genom
+
+
+
+volcano_edger_genom <- ggplot(data = df_es_edger, 
+                        mapping = aes(y = -log10(pval_edgeR),
+                                      x = log2(FC_edgeR))) +
+                 geom_point() +
+                 geom_pointdensity() +
+                 scale_color_viridis() +
+                 scale_x_continuous(limits = c(0, 10)) +
+                 ylim(c(0,40))
+   
+
+volcano_edger_genom 
+
+
+```
+
+
+
+Creating a dataframe combining the DEseq and edgeR fragments in 
+
+```{r}
+df_es_fused_na_genom <- df_es_combined_genom
+
+df_es_fused_na_genom[is.na(df_es_fused_na_genom)] <- 0
+
+
+df_es_fused_genom <- df_es_fused_na_genom %>% 
+      
+      group_by(chromosome, deb, fin) %>% 
+      
+      summarise(across(c(pval_DEseq, 
+                         FC_DEseq, 
+                         pval_edgeR, 
+                         FC_edgeR), 
+                       sum))
+```
+
+
+
+
+
+```{r}
+scatter_FC_genom <- ggplot(data = df_es_fused_genom,
+                     mapping = aes(x = FC_DEseq,
+                                   y = FC_edgeR)) +
+              scale_x_continuous(trans = "log2") +
+              scale_y_continuous(trans = "log2") +
+              geom_pointdensity() +
+              scale_color_viridis()
+
+scatter_FC_genom
+
+
+
+```
+
+
+
+
+```{r}
+scatter_pval_genom <- ggplot(data = df_es_fused_genom,
+                       mapping = aes(x = -log10(pval_DEseq),
+                                     y = -log10(pval_edgeR))) +
+              geom_pointdensity() +
+              scale_color_viridis() +
+              scale_x_continuous(limits = c(0, 40)) +
+              scale_y_continuous(limits = c(0, 40)) +
+              geom_abline(slope = 1, intercept = 0)
+   
+
+ggMarginal(scatter_pval_genom, type = "histogram")
+```
+
+
+
+Extraction of the common fragments and specific fragments
+
+```{r}
+
+df_es_common_genom_only <- filter(df_es_fused_genom, 
+                           (pval_edgeR != 0))
+
+df_es_edgeR_genom_only <- filter(df_es_fused_genom,
+                           (pval_DEseq == 0))
+
+
+
+```
+
+
+
+Volcano plots of the fragments of the fragments rejected by DESeq and not rejected
+
+```{r}
+
+
+volcano_edger_only_genom <- ggplot(data = df_es_edgeR_genom_only,
+                                  mapping = aes(x = log2(FC_edgeR),
+                                                y = -log10(pval_edgeR))) +
+                           geom_pointdensity() +
+                           labs(title = "fragments excluded by DESeq") +
+                           scale_x_continuous(limits = c(0, 10))+
+                           scale_y_continuous(limits = c(0, 40))+
+                           scale_color_viridis()
+
+
+
+ggMarginal(volcano_edger_only_genom, type = "histogram")
+
+
+
+volcano_common_only_genom <- ggplot(data = df_es_common_genom_only,
+                                  mapping = aes(x = log2(FC_edgeR),
+                                                y = -log10(pval_edgeR))) +
+                            geom_pointdensity() +
+                            labs(title = "common fragments between DESeq and edgeR") +
+                            scale_x_continuous(limits = c(0, 10))+
+                            scale_y_continuous(limits = c(0, 40))+
+                            scale_color_viridis()
+
+
+
+ggMarginal(volcano_common_only_loop, type = "histogram")
+
+
+```

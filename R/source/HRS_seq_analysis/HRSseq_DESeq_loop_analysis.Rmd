@@ -1,0 +1,275 @@
+---
+title: "DESeq ES cells loop analysis"
+output: html_notebook
+---
+
+
+Importing the data with and without DESeq
+
+```{r}
+library(dplyr)
+
+
+df_es_loop_deseq <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refboo.csv",
+                        sep = ";")
+
+
+df_es_loop_deseq <- select(df_es_loop_deseq, 
+                      c(chromosome, deb, fin, pvalFDR_DEseq, FC))
+
+colnames(df_es_loop_deseq) <- c("chromosome", "deb", "fin", "pval_DEseq", "FC_DEseq")
+
+
+
+
+
+df_es_loop_edger <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-sansDEseq/listHRS_ES_BOO.csv",
+                        sep = ";")
+
+df_es_loop_edger <- select(df_es_loop_edger, 
+                      c(chromosome, deb, fin, pvalFDR_edgeR_exact, FC))
+
+colnames(df_es_loop_edger) <- c("chromosome", "deb", "fin", "pval_edgeR", "FC_edgeR")
+
+
+df_es_loop_combined <- bind_rows(df_es_loop_deseq, df_es_loop_edger)
+
+
+```
+
+```{r}
+library(ggplot2)
+library(ggpointdensity)
+library(viridis)
+library(ggExtra)
+
+
+volcano_DEseq_loop <- ggplot(data = df_es_loop_deseq,
+                        mapping = aes(y = -log10(pval_DEseq),
+                                      x = log2(FC_DEseq))) +
+                 geom_point() +
+                 geom_pointdensity() +
+                 scale_color_viridis() +
+                 scale_x_continuous(limits = c(0, 10))+
+                 ylim(c(0,40))
+
+volcano_DEseq_loop
+
+
+
+volcano_edger_loop <- ggplot(data = df_es_loop_edger, 
+                        mapping = aes(y = -log10(pval_edgeR),
+                                      x = log2(FC_edgeR))) +
+                 geom_point() +
+                 geom_pointdensity() +
+                 scale_color_viridis() +
+                 scale_x_continuous(limits = c(0, 10)) +
+                 ylim(c(0,40))
+   
+
+volcano_edger_loop       
+
+
+```
+
+
+
+Creating a dataframe combining the DEseq and edgeR fragments in 
+
+```{r}
+df_es_loop_fused_na <- df_es_loop_combined
+
+df_es_loop_fused_na[is.na(df_es_loop_fused_na)] <- 0
+
+
+df_es_loop_fused <- df_es_loop_fused_na %>% 
+      
+      group_by(chromosome, deb, fin) %>% 
+      
+      summarise(across(c(pval_DEseq, 
+                         FC_DEseq, 
+                         pval_edgeR, 
+                         FC_edgeR), 
+                       sum))
+```
+
+
+
+
+
+```{r}
+scatter_FC_loop <- ggplot(data = df_es_loop_fused,
+                     mapping = aes(x = FC_DEseq,
+                                   y = FC_edgeR)) +
+              scale_x_continuous(trans = "log2") +
+              scale_y_continuous(trans = "log2") +
+              geom_pointdensity() +
+              scale_color_viridis()
+
+scatter_FC_loop
+
+
+
+```
+
+
+
+
+```{r}
+scatter_pval_loop <- ggplot(data = df_es_loop_fused,
+                       mapping = aes(x = -log10(pval_DEseq),
+                                     y = -log10(pval_edgeR))) +
+              geom_pointdensity() +
+              scale_color_viridis() +
+              scale_x_continuous(limits = c(0, 40)) +
+              scale_y_continuous(limits = c(0, 40)) +
+              geom_abline(slope = 1, intercept = 0)
+   
+
+ggMarginal(scatter_pval_loop, type = "histogram")
+```
+
+
+
+Extraction of the common fragments and specific fragments
+
+```{r}
+
+df_es_loop_common_only <- filter(df_es_loop_fused, 
+                           (pval_DEseq != 0))
+
+df_es_loop_edger_only <- filter(df_es_loop_fused,
+                           (pval_DEseq == 0))
+
+
+
+```
+
+
+Volcano plot of the edge R exclusive fragments and common fragments
+
+```{r}
+
+volcano_edger_only_loop <- ggplot(data = df_es_loop_edger_only,
+                                  mapping = aes(x = log2(FC_edgeR),
+                                                y = -log10(pval_edgeR))) +
+                           geom_pointdensity() +
+                           labs(title = "fragments excluded by DESeq") +
+                           scale_x_continuous(limits = c(0, 10))+
+                           scale_y_continuous(limits = c(0, 40))+
+                           scale_color_viridis()
+
+
+
+ggMarginal(volcano_edger_only_loop, type = "histogram")
+
+
+
+volcano_common_only_loop <- ggplot(data = df_es_loop_common_only,
+                                  mapping = aes(x = log2(FC_edgeR),
+                                                y = -log10(pval_edgeR))) +
+                            geom_pointdensity() +
+                            labs(title = "common fragments between DESeq and edgeR") +
+                            scale_x_continuous(limits = c(0, 10))+
+                            scale_y_continuous(limits = c(0, 40))+
+                            scale_color_viridis()
+
+
+
+ggMarginal(volcano_common_only_loop, type = "histogram")
+
+
+
+
+
+```
+
+
+Checking the representation of chromosomes in the top DESeq excluded fragments
+
+```{r}
+df_es_loop_edger_only$count <- 1 
+
+df_representation_loop <- df_es_loop_edger_only %>%
+   
+   group_by(chromosome) %>%
+   
+   summarise(across(count, sum))
+
+
+df_representation_loop$ratio <- df_representation_loop$count /
+                                sum(df_representation_loop$count)
+
+
+
+df_es_loop_fused$count_global <- 1
+
+
+
+
+df_counts_global_loop <- df_es_loop_fused %>% 
+   group_by(chromosome) %>% 
+   summarise(across(count_global, sum))
+
+df_counts_global$ratio_global <- df_counts_global_loop$count_global /
+                                 sum(df_counts_global_loop$count_global)
+
+
+df_es_counts_global_loop <- arrange(df_counts_global_loop, chromosome)
+
+df_representation_loop <- arrange(df_representation_loop, chromosome)
+
+
+
+df_representation_loop$ratio_global <- df_counts_global$ratio_global
+
+df_representation_loop$count_global <- df_counts_global$count_global
+```
+
+
+
+Plotting the fragment's ratios
+
+```{r}
+ggplot(df_representation_loop,
+       mapping = aes(x = "", y = ratio*100, fill = chromosome)) +
+   geom_bar(stat = "identity", width = 1, colour = "black") +
+   labs(title = "edgeR only") +
+   coord_polar("y", start=0)
+   
+
+ggplot(df_representation_loop,
+       mapping = aes(x = "", y = ratio_global*100, fill = chromosome)) +
+   geom_bar(stat = "identity", width = 1, colour = "black") +
+   labs(title = "all") +
+   coord_polar("y", start=0)
+
+
+```
+
+
+1D clustering to find regions standing out
+
+
+```{r}
+library(Ckmeans.1d.dp)
+library(RColorBrewer)
+
+
+df_es_loop_edger_only$center <- df_es_loop_edger_only$deb + 
+                                (df_es_loop_edger_only$fin - 
+                                 df_es_loop_edger_only$deb)/2
+
+
+clustering_loop <- df_es_loop_edger_only %>% 
+                   group_by(chromosome) %>% 
+                   mutate(cluster = Ckmeans.1d.dp(center, c(1, 10 000)))
+
+k <- max(results)
+
+
+
+```
+
+
+

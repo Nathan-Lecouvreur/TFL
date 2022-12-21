@@ -1,0 +1,204 @@
+---
+title: "Biorad output reader"
+author: "nathan lecouvreur"
+date: "2022-10-20"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+library(grid)
+rangex <- range(1,1000)
+rangey <- range(1,1000)
+plot(rangex, rangey,type="n", ann=F,ylim=c(1,1000))
+x1=500
+y1=500
+x2=200
+y2=200
+grid.curve(x1,y1,x2,y2,default.units = "native")
+```
+
+```{r}
+x1=500
+y1=0
+x2=200
+y2=0
+
+grid.newpage()
+pushViewport(plotViewport(c(5.1, 4.1, 4.1, 2.1)))
+pushViewport(dataViewport(rangex, rangey)) 
+grid.xaxis() 
+grid.yaxis()
+grid.curve(x1,y1,x2,y2,default.units = "native")
+grid.points(x1,y1,pch=20)
+grid.points(x2,y2,pch=20)
+```
+```{r}
+
+   # example taken from post by Hans Borcher:
+   # https://stat.ethz.ch/pipermail/r-help/2009-July/205728.html
+   # Note setting of aspect ratio to 1 first.
+library(ggplot2)
+library(ggforce)
+
+beziers <- data.frame(
+  x = c(1, 2, 3, 4, 4, 6, 6),
+  y = c(0, 2, 0, 0, 2, 2, 0),
+  type = rep(c('cubic', 'quadratic'), c(3, 4)),
+  point = c('end', 'control', 'end', 'end', 'control', 'control', 'end'),
+  colour = letters[1:7]
+)
+help_lines <- data.frame(
+  x = c(1, 3, 4, 6),
+  xend = c(2, 2, 4, 6),
+  y = 0,
+  yend = 2
+)
+
+# See how control points affect the bezier
+ggplot() +
+  geom_segment(aes(x = x, xend = xend, y = y, yend = yend),
+               data = help_lines,
+               arrow = arrow(length = unit(c(0, 0, 0.5, 0.5), 'cm')),
+               colour = 'grey') +
+  geom_bezier(aes(x = x, y = y, group = type, linetype = type),
+              data = beziers) +
+  geom_point(aes(x = x, y = y, colour = point),
+             data = beziers)
+
+# geom_bezier0 is less exact
+ggplot() +
+  geom_segment(aes(x = x, xend = xend, y = y, yend = yend),
+               data = help_lines,
+               arrow = arrow(length = unit(c(0, 0, 0.5, 0.5), 'cm')),
+               colour = 'grey') +
+  geom_bezier0(aes(x = x, y = y, group = type, linetype = type),
+               data = beziers) +
+  geom_point(aes(x = x, y = y, colour = point),
+             data = beziers)
+
+# Use geom_bezier2 to interpolate between endpoint aesthetics
+ggplot(beziers) +
+  geom_bezier2(aes(x = x, y = y, group = type, colour = colour))
+
+
+
+
+```
+
+```{r}
+library(ggplot2)
+library(ggforce)
+
+# x = c(xend1, xcontrol, xend2)
+# y = c(yend1, ycontrol, yend2)
+
+
+beziers <- data.frame(
+  x = c(1, 1, 3),
+  y = c(0, 2, 0),
+  type = rep('cubic', 3),
+  point = c('end', 'control', 'end'),
+  colour = letters[1:3]
+)
+help_lines <- data.frame(
+  x = c(1, 3),
+  xend = c(1.5, 1.5),
+  y = 0,
+  yend = 2
+)
+
+# See how control points affect the bezier
+ggplot() +
+  geom_bezier(aes(x = x, y = y, group = type, linetype = type),
+              data = beziers) +
+  geom_point(aes(x = x, y = y, colour = point),
+             data = beziers)
+
+```
+
+```{r}
+library(readxl)
+library(dplyr)
+
+
+# Importing the excel file containing the 3C data
+
+# Insert the location of the excel file in the next line
+
+my_dat <- read_excel(
+  path = "Z:/Nathan/Resultats/3C-Valentin/3C-DATA-v12_TAD 2-3_résultats Valentin_COPIE.xlsx", 
+  sheet = 1, 
+  range = "H14:J64", 
+  col_names = TRUE)
+
+my_dat <- na.omit(my_dat)
+
+colnames(my_dat) <- c("pos", "val", "sem")
+
+
+library(ggplot2)
+library(ggforce)
+
+bezier_plot <- function(pos, val, sem){
+  
+  # setting up the bezier curve poitnts and the data points
+  # x = c(xend1, xcontrol, xend2)
+  # y = c(yend1, ycontrol, yend2)
+  # type = rep*3 "cubic" or "quadratic"
+  # point = c('end', 'control', 'end')
+  # colours = c(end1_colour, control_colour, end2_colour )
+  
+  beziers <- data.frame(
+    x = c(0, pos*0.1, pos[1]),
+    y = c(0, 2, 0),
+    type = rep('cubic', 3))
+  
+  data <- data.frame(
+    x = c(0, pos[1]),
+    y = c(0, 0),
+    point = c("viewpoint", "target"),
+    colour = letters[1:2])
+
+  
+  plot <- plot() +
+    geom_bezier(aes(x = x, 
+                    y = y, 
+                    group = type, 
+                    linetype = type),
+                data = beziers) +
+    geom_point(aes(x = x, y = y, 
+                   colour = point),
+               data = data)
+  
+  return(plot)
+  }
+
+  
+
+  
+plot <- ggplot()
+
+mapply(bezier_plot, 
+       pos = my_dat$pos, 
+       val = my_dat$val, 
+       sem = my_dat$sem)
+
+
+
+
+```
+```{r}
+log(0.1)
+```
+

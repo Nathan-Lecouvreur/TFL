@@ -1,0 +1,207 @@
+---
+title: "HRS_seq_analysis"
+output: html_notebook
+---
+ 
+
+Initialisation of the different data
+
+```{r}
+library(dplyr)
+
+
+
+es_genom <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refgenom.csv", sep = ";")
+
+es_genom <- select(es_genom, c(chromosome, c(chromosome, deb, fin, NEU, NPC, ES, HRS_ES1, HRS_ES2, HRS_ES3, pvalFDR_DESeq, FC)))
+
+colnames(es_genom) <- c("chromosome", "deb", "fin", "ref_1", "ref_2", "ref_3", "HRS_ES1", "HRS_ES2", "HRS_ES3", "pvalFDR_DESeq_genom", "FC_genom" )
+
+es_genom$ref_type <- "genome" 
+
+es_genom$id <- 1
+
+
+
+es_loop <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refboo.csv", sep = ";")
+
+es_loop <- select(es_loop, c(chromosome, c(chromosome, deb, fin, HRS_ES1, LOO_ES1, HRS_ES2, LOO_ES2, HRS_ES3, LOO_ES3, pvalFDR_DEseq, FC)))
+
+colnames(es_loop) <- c("chromosome", "deb", "fin", "HRS_ES1", "ref_1", "HRS_ES2", "ref_2", "HRS_ES3", "ref_3", "pvalFDR_DESeq_loop", "FC_loop" )
+
+es_loop$ref_type <- "loop" 
+
+es_loop$id <- 2
+
+
+es_combined <- bind_rows(es_loop, es_genom)
+```
+
+
+```{r}
+library(ggplot2)
+library(ggExtra)
+
+
+
+volcano_loop <- ggplot(data = es_combined,
+                       mapping = aes(x = FC_loop, 
+                                     y = -log10(pvalFDR_DESeq_loop))) +
+                geom_point(colour = "red") +
+                scale_x_continuous(trans = "log2")
+
+
+ggMarginal(volcano_loop, 
+           type = "histogram")
+
+
+
+volcano_genom <- ggplot(data = es_combined, 
+                        aes(x = FC_genom,
+                            y = -log10(pvalFDR_DESeq_genom))) +
+                 geom_point(colour = "blue") +
+                 scale_x_continuous(trans = "log2")
+
+ggMarginal(volcano_genom, 
+           type = "histogram")
+
+```
+
+
+
+```{r}
+library(ggpointdensity)
+library(viridis)
+es_genom$size <- es_genom$fin - es_genom$deb
+
+
+plot_size_genom <- ggplot(data = es_genom, 
+                           mapping = aes(x = size,
+                                         y = FC_genom)) +
+                   scale_x_continuous(trans = "log10") +
+                   scale_y_continuous(trans = "log2") +
+                   geom_pointdensity() +
+                   scale_color_viridis()
+
+ggMarginal(plot_size_genom,
+           type = "histogram")
+
+
+
+es_loop$size <- es_loop$fin - es_loop$deb
+
+plot_size_loop <- ggplot(data = es_loop, 
+                         mapping = aes(x = size,
+                                       y = FC_loop)) +
+                  geom_pointdensity() +
+                  scale_x_continuous(trans = "log10") +
+                  scale_y_continuous(trans = "log2") +
+                  scale_color_viridis()
+
+ggMarginal(plot_size_loop,
+           type = "histogram")
+```
+
+analyse de position
+
+```{r}
+
+
+
+start <- 4760000
+
+stop <-  4900000
+
+chrom <- "chr1"
+
+df_region <- filter(es_combined,
+                    ((deb > start) 
+                     & (fin < stop) 
+                     & (chromosome == chrom) ))
+
+df_region$mid <- ((df_region$fin - df_region$deb)/2) + df_region$deb
+
+
+plot_region_loop <- ggplot(df_region, 
+                           aes(x = mid,
+                               y = FC_loop),
+                           xlim(c(start, fin))) +
+   geom_col() +
+   scale_x_continuous(limits = c(start, stop))
+
+plot_region_loop
+
+
+
+plot_region_genom <- ggplot(df_region,
+                            aes(x = mid,
+                                y = FC_genom),
+                            xlim(c(start, stop))) +
+   geom_col() +
+   scale_x_continuous(limits = c(start, stop))
+
+plot_region_genom
+
+```
+
+
+saving files
+
+```{r}
+
+
+
+```
+
+
+
+```{r}
+es_papier <- read.table("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/HRS_seq_papier.BED")
+
+colnames(es_papier) <- c("chromosome", "deb", "fin") 
+
+
+es_genom_pos <- dplyr::select(es_genom,
+                   c(chromosome,
+                    deb,
+                    fin))
+es_genom_pos$id <- "A"
+
+es_loop_pos <- dplyr::select(es_loop,
+                   c(chromosome,
+                    deb,
+                    fin))
+
+es_loop_pos$id <- "B"
+
+df <- rbind(es_loop_pos, es_genom_pos)
+
+df <- distinct(df)
+
+
+df_comp <- rbind(df, es_papier)
+
+df_comp <- df_comp[!(duplicated(df_comp) | duplicated(df_comp, fromLast = TRUE)),]
+
+
+df_tot <- rbind(es_genom_pos, es_loop_pos)
+
+test <- distinct(df_tot, deb, fin, .keep_all = TRUE)
+
+
+table(test$id)
+```
+
+```{r}
+df_comp 
+```
+
+
+Cell to save the tables created above
+
+```{r}
+
+write.csv(df_comp, file = "Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/differing_sites.csv" )
+
+write.csv(df, file = "Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/merged_sites.csv")
+```
