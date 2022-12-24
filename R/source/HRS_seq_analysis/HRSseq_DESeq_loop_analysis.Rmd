@@ -10,8 +10,12 @@ Importing the data with and without DESeq
 library(dplyr)
 
 
-df_es_loop_deseq <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refboo.csv",
+# df_es_loop_deseq <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refboo.csv",
+#                         sep = ";")
+
+df_es_loop_deseq <- read.csv("C:/local_data/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refboo.csv",
                         sep = ";")
+
 
 
 df_es_loop_deseq <- select(df_es_loop_deseq, 
@@ -22,9 +26,14 @@ colnames(df_es_loop_deseq) <- c("chromosome", "deb", "fin", "pval_DEseq", "FC_DE
 
 
 
+# 
+# df_es_loop_edger <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-sansDEseq/listHRS_ES_BOO.csv",
+#                         sep = ";")
 
-df_es_loop_edger <- read.csv("Z:/Nathan/Resultats/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-sansDEseq/listHRS_ES_BOO.csv",
+
+df_es_loop_edger <- read.csv("C:/local_data/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-sansDEseq/listHRS_ES_BOO.csv",
                         sep = ";")
+
 
 df_es_loop_edger <- select(df_es_loop_edger, 
                       c(chromosome, deb, fin, pvalFDR_edgeR_exact, FC))
@@ -211,7 +220,7 @@ df_counts_global_loop <- df_es_loop_fused %>%
    group_by(chromosome) %>% 
    summarise(across(count_global, sum))
 
-df_counts_global$ratio_global <- df_counts_global_loop$count_global /
+df_counts_global_loop$ratio_global <- df_counts_global_loop$count_global /
                                  sum(df_counts_global_loop$count_global)
 
 
@@ -221,9 +230,9 @@ df_representation_loop <- arrange(df_representation_loop, chromosome)
 
 
 
-df_representation_loop$ratio_global <- df_counts_global$ratio_global
+df_representation_loop$ratio_global <- df_counts_global_loop$ratio_global
 
-df_representation_loop$count_global <- df_counts_global$count_global
+df_representation_loop$count_global <- df_counts_global_loop$count_global
 ```
 
 
@@ -260,16 +269,62 @@ df_es_loop_edger_only$center <- df_es_loop_edger_only$deb +
                                 (df_es_loop_edger_only$fin - 
                                  df_es_loop_edger_only$deb)/2
 
+first_group = function(x) x %>%
+    select(group_cols()) %>%
+    distinct %>%
+    ungroup %>%
+    slice(1) %>%
+    { semi_join(x, .)}
+
+
+
+
+
+chroms <- group_by(df_es_loop_edger_only, chromosome)
+
+isolate_group = function(df, n) df %>%
+    select(group_cols()) %>%
+    distinct %>%
+    ungroup %>%
+    slice(n) %>%
+    { semi_join(x, .)}
+
+test <- first_group(chroms)
+
+
+
+results <- (Ckmeans.1d.dp(test$center))[cluster]
 
 clustering_loop <- df_es_loop_edger_only %>% 
                    group_by(chromosome) %>% 
-                   mutate(cluster = Ckmeans.1d.dp(center, c(1, 10 000)))
-
-k <- max(results)
-
+                   mutate(cluster = (Ckmeans.1d.dp(center, c(1, 1000)))$cluster)
 
 
 ```
 
+```{r}
+
+                                  mapping = aes(x = log2(FC_edgeR),
+                                                y = -log10(pval_edgeR),
+                                                color = cluster)) +
+                           geom_point()
+
+
+scatter_clustering_loop
+
+
+scatter_clustering_loop <- clustering_loop %>% 
+                           group_by(chromosome) %>%
+                           ggplot(mapping = aes(x = log2(FC_edgeR),
+                                                y = -log10(pval_edgeR),
+                                                color = cluster)) +
+                           geom_point()
+
+
+
+                           
+
+scatter_clustering_loop + facet_wrap()
+```
 
 
