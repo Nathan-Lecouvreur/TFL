@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-
 """
 DESCRIPTION:
 Program designed to take a fasta file and extract all the GATC digestion fragments in this genome
