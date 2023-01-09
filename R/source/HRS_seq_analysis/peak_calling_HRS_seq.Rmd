@@ -1,0 +1,63 @@
+---
+title: "DEseq analysis"
+output: html_notebook
+---
+
+
+Loading all libraries required for the sheet
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+library(rtracklayer)
+library(AnnotationHub)
+library(GenomicFeatures)
+library(Gviz)
+library(GenomicRanges)
+
+```
+
+
+
+
+Importing the HRSseq files
+
+```{r}
+
+DEseq_loop <- read.csv("C:/local_data/HRS-seq-SOURIS/HRS-seq-SOURIS-mm9-avec-DEseq/listHRS_ES_avecDESeq_refboo.csv", sep = ";")
+
+
+DEseq_loop <- GRanges(seqnames = DEseq_loop$chromosome,
+                      ranges   = IRanges(start = DEseq_loop$deb,
+                                 end = DEseq_loop$fin),
+                      FC = DEseq_loop$FC,
+                      pval = DEseq_loop$pvalFDR_DEseq)
+
+
+
+```
+
+
+
+```{r}
+
+hub = AnnotationHub()
+gtf = hub[['AH61126']]
+
+# select only chromosome 21
+seqlevels(gtf, pruning.mode='coarse') = '21'
+
+# extract chromosome names
+ensembl_seqlevels = seqlevels(gtf)
+
+# paste the chr prefix to the chromosome names
+ucsc_seqlevels    = paste0('chr', ensembl_seqlevels)
+
+# replace ensembl with ucsc chromosome names
+seqlevels(gtf, pruning.mode='coarse') = ucsc_seqlevels
+
+
+
+```
+
