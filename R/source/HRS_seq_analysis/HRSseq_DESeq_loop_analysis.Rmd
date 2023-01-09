@@ -282,11 +282,11 @@ first_group = function(x) x %>%
 
 chroms <- group_by(df_es_loop_edger_only, chromosome)
 
-isolate_group = function(df, n) df %>%
+first_group = function(df, n) df %>%
     select(group_cols()) %>%
     distinct %>%
     ungroup %>%
-    slice(n) %>%
+    slice() %>%
     { semi_join(x, .)}
 
 test <- first_group(chroms)
@@ -302,29 +302,59 @@ clustering_loop <- df_es_loop_edger_only %>%
 
 ```
 
+
+plotting each chromosome clustering as a volcano plot
+
 ```{r}
 
+
+scatter_clustering_loop <- ggplot(data = clustering_loop,
                                   mapping = aes(x = log2(FC_edgeR),
                                                 y = -log10(pval_edgeR),
-                                                color = cluster)) +
-                           geom_point()
+                                                color = cluster,
+                                                group = chromosome)) +
+                           geom_point() +
+                           scale_color_viridis()
 
 
 scatter_clustering_loop
-
-
-scatter_clustering_loop <- clustering_loop %>% 
-                           group_by(chromosome) %>%
-                           ggplot(mapping = aes(x = log2(FC_edgeR),
-                                                y = -log10(pval_edgeR),
-                                                color = cluster)) +
-                           geom_point()
-
-
-
                            
 
-scatter_clustering_loop + facet_wrap()
+scatter_clustering_loop + facet_wrap("chromosome")
+```
+
+
+
+creating clusters from the DEseq fragments
+
+```{r}
+df_es_loop_deseq$mid <- df_es_loop_deseq$deb + ((df_es_loop_deseq$fin - df_es_loop_deseq$deb)/2)
+
+
+df_es_loop_deseq_clustering <- df_es_loop_deseq %>%
+                               group_by(chromosome) %>%
+                               mutate(clusters = Ckmeans.1d.dp(mid, k = 100)$cluster)
+
+df_es_loop_deseq_clustering_sum <- df_es_loop_deseq_clustering %>% 
+   group_by(clusters, chromosome)                              %>%
+   summarise(mean = mean(mid), 
+             size = max(fin) 
+                    - min(deb))
+```
+
+
+
+
+```{r}
+scatter_clustering_deseq_loop <- df_es_loop_deseq_clustering_sum %>% 
+   group_by(chromosome) %>% 
+   ggplot(mapping = aes(x = mean,
+                        y = size,
+                        color = clusters)) +
+   geom_point()
+
+
+scatter_clustering_deseq_loop + facet_wrap("chromosome")
 ```
 
 
