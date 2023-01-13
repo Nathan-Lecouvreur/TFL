@@ -1,0 +1,110 @@
+---
+title: "RNAseq analysis IMR90"
+output: html_notebook
+---
+
+importing packages
+
+```{r}
+
+library(ggplot2)
+library(dplyr)
+library(rtracklayer)
+library(AnnotationHub)
+library(GenomicFeatures)
+library(Gviz)
+library(GenomicRanges)
+library(tidyverse)
+library(org.Hs.eg.db)s
+library(openxlsx)
+```
+
+
+NOTCH1 mediates a switch between two distinct secretomes during senescence.
+
+Hoare M, Ito Y, Kang TW, Weekes MP, Matheson NJ, Patten DA, Shetty S, Parry AJ, Menon S, Salama R, Antrobus R, Tomimatsu K, Howat W, Lehner PJ, Zender L, Narita M
+
+GSE72404
+
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE133660
+
+
+```{r}
+# Importing the data
+
+RNA_data <- read.table("Z:/Nathan/Code/TFL/R/data/RNAseq/f7a7c5a7-d958-4658-ada6-acf91579dea8/SRP062871/SRP062871.tsv", header = TRUE)
+
+
+RNA_data$mean <- rowMeans(RNA_data[, 2 : (ncol(RNA_data))])
+
+RNA_data <- dplyr::select(RNA_data, Gene, mean)
+
+```
+
+Separating the 3 thirds of the dataset.
+
+```{r}
+
+RNA_data <- RNA_data[RNA_data$mean > 0, ]
+
+RNA_data_split <- arrange(RNA_data, mean)
+
+median_RNA <- RNA_data$mean
+
+median_index <- which(RNA_data$mean == median(RNA_data$mean))
+
+subset_low <- median_index - 1500
+
+subset_high <- median_index + 1500
+
+RNA_data_split <- RNA_data[subset_low : 
+                           subset_high, ]
+
+
+```
+
+Adding the gene symbols to each id
+
+```{r}
+data <- RNA_data_split[,"Gene"]
+
+data <- as.vector(data)
+
+
+annotation <- AnnotationDbi::select(org.Hs.eg.db,
+                                    key=data,
+                                    columns = "SYMBOL",
+                                    keytype = "ENSEMBL")
+
+RNA_data_split_symbol <- merge(RNA_data_split,
+                         annotation,
+                         by.x = "Gene", 
+                         by.y = "ENSEMBL",
+                         all.x = FALSE,
+                         all.y = FALSE)
+
+RNA_data_split_symbol <- RNA_data_split_symbol %>% drop_na(mean)
+
+
+```
+
+
+Saving the list 
+
+```{r}
+
+outfile <- "Z:/Nathan/Resultats/ARN/list_ARN_median.xls"
+
+write.xlsx(RNA_data_split_symbol, 
+            outfile,
+           colNames = TRUE,
+           sep = ".")
+
+
+
+
+
+
+```
+
+
