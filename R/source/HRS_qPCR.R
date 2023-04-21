@@ -90,7 +90,8 @@ gg_sites <- ggplot(sites, aes(x=sty, y=0)) +
    annotate("segment",x=min(sites$sty),xend=max(sites$sty), y=0, yend=0, size=0.5) +
    # annotate("segment",x=1,xend=min(sites$sty), y=-0.1,yend=0.1, size=2) +
    # annotate("segment",x=max(sites$sty),xend=max(sites$sty), y=-0.1,yend=0.1, size=2) +
-   scale_x_continuous(limits = c(min(sites$sty),max(sites$sty))) +
+   scale_x_continuous(limits = c(min(sites$sty),
+                                 max(sites$sty))) +
    scale_y_continuous(limits = c(-1,1)) +
    scale_color_manual(values = unname(colours)) +
    theme(panel.background = element_blank(),

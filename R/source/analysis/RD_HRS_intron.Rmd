@@ -1,0 +1,389 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+library(dplyr)
+library(psych)
+require(ggplot2)
+library(tidyr)
+library(desc)
+```
+
+Importing the data
+
+```{r}
+df_intron_HRS_1 <- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230316 intron -  Quantification Summary.xlsx")
+df_intron_HRS_2 <- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230316 intron 2 -  Quantification Summary.xlsx")
+
+df_intron_input_1 <- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230322 gapdh 18s input -  Quantification Summary.xlsx")
+
+df_intron_input_2 <- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230322 intron input -  Quantification Summary.xlsx")
+
+df_control_HRS <- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230316 p1 -  Quantification Summary.xlsx")
+```
+
+Removing SQ col and remaining NA values
+
+```{r}
+df_intron_HRS_1 <- 
+   df_intron_HRS_1 %>% 
+   select(!SQ) %>% 
+   na.omit()
+
+df_intron_HRS_2 <- 
+   df_intron_HRS_2 %>% 
+   select(!SQ) %>% 
+   na.omit()
+
+df_intron_input_1 <- 
+   df_intron_input_1 %>% 
+   select(!SQ) %>% 
+   na.omit()
+
+df_intron_input_2 <- 
+   df_intron_input_2 %>% 
+   select(!SQ) %>% 
+   na.omit()
+
+df_control_HRS <- 
+   df_control_HRS %>%
+   select(!SQ) %>% 
+   na.omit()
+
+
+df_introns <- 
+   bind_rows(df_intron_HRS_1,
+             df_intron_HRS_2,
+             df_intron_input_1,
+             df_intron_input_2,
+             df_control_HRS) %>% 
+   group_by(Sample, Target) %>% 
+   summarise(Cq = mean(as.numeric(Cq)))
+
+```
+
+First normalization factor for each replicate
+
+```{r}
+
+df_introns$Cq <- as.numeric(df_introns$Cq)
+
+df_introns <- 
+   df_introns %>% 
+   filter(! Target == "IGFBP5 I3" &
+          ! Sample == "I5")
+df_norm <- 
+   df_introns %>% 
+   filter(Target == "18S" |
+          Target == "hGAPDH") %>% 
+   group_by(Sample) %>% 
+   summarise(norm_factor = geometric.mean(Cq)) 
+
+colnames(df_norm) <- c("Sample_norm", "norm_factor")
+
+df_introns_norm <- 
+   df_introns %>%
+   group_by(Sample) %>% 
+   mutate(Cq_norm = Cq /
+                    with(df_norm, norm_factor[Sample_norm == Sample[1]]))
+
+
+
+
+```
+
+geometric mean normalization V2 delta delta CT
+
+```{r}
+
+df_introns <- 
+   df_introns %>% 
+   filter(! Target == "IGFBP5 I3" &
+          ! Sample == "I5")
+df_norm <- 
+   df_introns %>% 
+   filter(Target == "18S" ) %>% 
+   group_by(Sample) %>% 
+   summarise(norm_factor = geometric.mean(Cq)) 
+
+colnames(df_norm) <- c("Sample_norm", "norm_factor")
+
+df_introns_norm <- 
+   df_introns %>%
+   group_by(Sample) %>% 
+   mutate(Cq_norm = (Cq - with(df_norm, norm_factor[Sample_norm == Sample[1]]))) %>% 
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE) %>% 
+   group_by(ID, Target) %>% 
+   summarise(delta_CT = mean(Cq_norm)) %>% 
+   group_by(Target) %>% 
+   summarise(ratio = 2^(-(delta_CT[ID == "H"] -
+                          delta_CT[ID == "I"])))
+   
+
+
+```
+
+2nd normalisation
+
+```{r}
+df_introns_norm <- 
+   df_introns_norm %>% 
+   filter(!Sample %like% "E") %>% 
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE)
+
+
+
+df_norm_global <- 
+   df_introns_norm %>% 
+   filter(Target == "hGAPDH" |
+          Target == "18S") %>%
+   group_by(ID, Target) %>% 
+   summarise(mean = mean(Cq_norm)) %>% 
+   group_by(Target) %>% 
+   summarise(mean = mean[ID == "H"] /
+                    mean[ID == "I"])
+
+norm_factor <- mean(df_norm_global$mean)
+
+df_introns_norm_2 <- 
+   df_introns_norm %>%
+   group_by(Sample, Target) %>% 
+   summarise(mean = mean(Cq_norm)) %>%
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE) %>% 
+   group_by(Target) %>% 
+   summarise(ratio = mean(mean[ID == "H"]) /
+                     mean(mean[ID == "I"])) %>% 
+   na.omit() %>% 
+   mutate(norm_ratio = ratio / norm_factor)
+
+
+```
+
+Plotting the results
+
+```{r fig.height=8, fig.width=20}
+
+ggplot(data = df_introns_norm,
+       mapping = aes(x = Target,
+                     y = ratio)) +
+   geom_col() +
+   scale_y_log10()
+
+
+
+```
+
+
+
+
+
+Importing the data
+
+```{r}
+df_genes_1<- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230316 p1 -  Quantification Summary.xlsx")
+df_genes_2 <- read_excel(path = "Z:/Nathan/Code/TFL/R/data/RD_HRS/values/230316 p2 -  Quantification Summary.xlsx")
+
+
+df_genes_1 <- 
+   df_genes_1 %>% 
+   select(!SQ) %>% 
+   na.omit()
+
+df_genes_2 <- 
+   df_genes_2 %>% 
+   select(!SQ) %>% 
+   na.omit()
+
+
+df_genes <- 
+   bind_rows(df_genes_1,
+             df_genes_2)
+
+
+```
+
+
+Removing values that out the of the sd +-
+selection
+
+```{r fig.height=10, fig.width=20}
+df_genes<- 
+   df_genes %>%
+   mutate(Cq = as.numeric(Cq)) %>% 
+   group_by(Target, Sample) %>%
+   mutate(mean = mean(Cq), 
+          sd = sd(Cq), 
+          var = var(Cq),
+          n = n())
+   
+   
+   
+df_genes <- mutate(df_genes, 
+                   low_lim = mean - (sd * 1.05),
+                   high_lim = mean + (sd * 1.05))
+   
+   
+
+
+df_genes_select <-
+   df_genes %>% 
+   rowwise() %>% 
+   filter(between(Cq,
+                  low_lim, 
+                  high_lim) |
+          (n < 3))  %>% 
+   group_by(Sample, Target) %>% 
+   summarise(Cq = mean(Cq))
+
+
+
+df_norm_genes <- 
+   df_genes_select %>% 
+   filter(Target == "18S" |
+          Target == "hGAPDH") %>% 
+   group_by(Sample) %>% 
+   summarise(norm_factor = geometric.mean(Cq)) 
+
+colnames(df_norm_genes) <- c("Sample_norm", "norm_factor")
+
+df_genes_norm <- 
+   df_genes_select %>%
+   group_by(Sample) %>% 
+   mutate(delta_CT = (Cq - with(df_norm_genes, norm_factor[Sample_norm == Sample[1]]))) %>% 
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE) %>% 
+   group_by(Target, number) %>%  
+   summarise(ratio = 2^(-(delta_CT[ID == "H"] -
+                          delta_CT[ID == "E"]))) %>% 
+   group_by(Target) %>%
+   summarise(delta_delta = mean(ratio),
+             sd = sd(ratio))
+   
+   
+
+ggplot(data = df_genes_norm,
+       mapping = aes(x = Target,
+                     y = delta_delta,
+                     ymin = delta_delta - sd,
+                     ymax = delta_delta + sd)) +
+   geom_col() +
+   geom_errorbar() +
+   scale_y_log10() +
+   ggtitle("RT_qPCR analysis of the RNA enrichment in Retained fraction") +
+   labs(x = "Genes", y = "Enrichment in the Retained fraction") +
+   theme(plot.title = element_text(face = "bold",
+                                  margin = margin(10, 0, 10, 0),
+                                  size = 14),
+         axis.text = element_text(size = 200)) +
+   theme_bw()
+
+```
+
+
+no selection
+
+```{r fig.height=10, fig.width=20}
+df_genes_select_no <- 
+   df_genes %>%
+   mutate(Cq = as.numeric(Cq)) %>% 
+   group_by(Sample, Target) %>% 
+   summarise(Cq = mean(Cq))
+
+
+# df_genes_select = df_genes
+
+df_norm_genes <- 
+   df_genes_select_no %>% 
+   filter(Target == "18S" |
+          Target == "hGAPDH") %>% 
+   group_by(Sample) %>% 
+   summarise(norm_factor = geometric.mean(Cq)) 
+
+colnames(df_norm_genes) <- c("Sample_norm", "norm_factor")
+
+df_genes_norm_no <- 
+   df_genes_select_no %>%
+   group_by(Sample) %>% 
+   mutate(delta_CT = (Cq - with(df_norm_genes, norm_factor[Sample_norm == Sample[1]]))) %>% 
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE) %>% 
+   group_by(Target, number) %>%  
+   summarise(ratio = 2^(-(delta_CT[ID == "H"] -
+                          delta_CT[ID == "E"]))) %>% 
+   group_by(Target) %>%
+   summarise(delta_delta = mean(ratio),
+             sd = sd(ratio))
+
+################################################################################
+#                                plot                                          #
+################################################################################
+ggplot(data = df_genes_norm_no,
+       mapping = aes(x = Target,
+                     y = delta_delta,
+                     ymin = delta_delta - sd,
+                     ymax = delta_delta + sd)) +
+   geom_col() +
+   geom_errorbar() +
+   coord_cartesian(ylim = c(0,50))
+
+```
+
+
+
+2nd normalisation
+
+```{r}
+df_genes_norm <- 
+   df_genes_norm %>% 
+   filter(!Sample %like% "E") %>% 
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE)
+
+
+
+df_norm_genes_global <- 
+   df_genes_norm %>% 
+   filter(Target == "hGAPDH" |
+          Target == "18S") %>%
+   group_by(ID, Target) %>% 
+   summarise(mean = mean(Cq_norm)) %>% 
+   group_by(Target) %>% 
+   summarise(mean = mean[ID == "H"] /
+                    mean[ID == "I"])
+
+norm_factor <- mean(df_norm_global$mean)
+
+df_introns_norm_2 <- 
+   df_introns_norm %>%
+   group_by(Sample, Target) %>% 
+   summarise(mean = mean(Cq_norm)) %>%
+   separate(Sample,
+            into = c("ID", "number"),
+            sep = "(?<=[A-Za-z])(?=[0-9])",
+            remove = FALSE) %>% 
+   group_by(Target) %>% 
+   summarise(ratio = mean(mean[ID == "H"]) /
+                     mean(mean[ID == "I"])) %>% 
+   na.omit() %>% 
+   mutate(norm_ratio = ratio / norm_factor)
+
+
+```
