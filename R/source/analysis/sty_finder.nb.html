@@ -1754,31 +1754,24 @@ display: none;
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 <!-- rnb-chunk-begin -->
-<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShydHJhY2tsYXllcilcbmxpYnJhcnkoQlNnZW5vbWUpXG5cbiMgRGVmaW5lIHRoZSBnZW5vbWljIHJlZ2lvbiBvZiBpbnRlcmVzdFxuZ2Vub21lX25hbWUgPC0gXCJoZzM4XCJcbmNociA8LSBcImNocjFcIlxuc3RhcnQgPC0gMTAwMDAwMFxuZW5kIDwtIDEwMTAwMDBcblxuIyBEZWZpbmUgdGhlIENDV1dHRyBtb3RpZiBhcyBhIEROQVN0cmluZyBvYmplY3RcbmNjd3dnZ19tb3RpZiA8LSBETkFTdHJpbmcoXCJDQ1dXR0dcIilcblxuIyBGZXRjaCB0aGUgcmVmZXJlbmNlIGdlbm9tZSBzZXF1ZW5jZSBmb3IgdGhlIHJlZ2lvbiBvZiBpbnRlcmVzdFxuZ2Vub21lIDwtIGdldFNlcXVlbmNlKGdlbm9tZV9uYW1lLCBzZXFuYW1lcz1jaHIsIHN0YXJ0PXN0YXJ0LCBlbmQ9ZW5kKVxuXG4jIEZpbmQgdGhlIHBvc2l0aW9ucyBvZiB0aGUgQ0NXV0dHIG1vdGlmIHdpdGhpbiB0aGUgc2VxdWVuY2VcbmNjd3dnZ19wb3NpdGlvbnMgPC0gdm1hdGNoUGF0dGVybihjY3d3Z2dfbW90aWYsIGdlbm9tZSwgbWF4Lm1pc21hdGNoPTEsIHdpdGgubWlzbWF0Y2g9VFJVRSlcblxuYGBgIn0= -->
-<pre class="r"><code>library(rtracklayer)
-library(BSgenome)
+<!-- rnb-source-begin eyJkYXRhIjoiYGBgclxubGlicmFyeShkYXRhLnRhYmxlKVxuXG5zcHJpdGUgPC0gZnJlYWQoXCJaOi9OYXRoYW4vQ29kZS9URkwvUi9kYXRhL1NQUklURS9TUFJJVEUudHh0XCIsXG4gICAgICAgICAgICAgICAgc2VwID0gXCJcXHRcIixcbiAgICAgICAgICAgICAgICBoZWFkZXIgPSBGQUxTRSxcbiAgICAgICAgICAgICAgICBmaWxsID0gVFJVRSlcblxuZnJlYWQoXCJaOi9OYXRoYW4vQ29kZS9URkwvUi9kYXRhL1NQUklURS9HU0UxODYyNjRfQUNURC5SRFNQUklURS5jbHVzdGVycy50eHRcIixcbiAgICAgIGhlYWRlciA9IEZBTFNFLFxuICAgICAgc2VwID0gXCJcXHRcIilcbmhlYWQoKVxuYGBgIn0= -->
+<pre class="r"><code>library(data.table)
 
-# Define the genomic region of interest
-genome_name &lt;- &quot;hg38&quot;
-chr &lt;- &quot;chr1&quot;
-start &lt;- 1000000
-end &lt;- 1010000
+sprite &lt;- fread(&quot;Z:/Nathan/Code/TFL/R/data/SPRITE/SPRITE.txt&quot;,
+                sep = &quot;\t&quot;,
+                header = FALSE,
+                fill = TRUE)
 
-# Define the CCWWGG motif as a DNAString object
-ccwwgg_motif &lt;- DNAString(&quot;CCWWGG&quot;)
-
-# Fetch the reference genome sequence for the region of interest
-genome &lt;- getSequence(genome_name, seqnames=chr, start=start, end=end)
-
-# Find the positions of the CCWWGG motif within the sequence
-ccwwgg_positions &lt;- vmatchPattern(ccwwgg_motif, genome, max.mismatch=1, with.mismatch=TRUE)
-</code></pre>
+fread(&quot;Z:/Nathan/Code/TFL/R/data/SPRITE/GSE186264_ACTD.RDSPRITE.clusters.txt&quot;,
+      header = FALSE,
+      sep = &quot;\t&quot;)
+head()</code></pre>
 <!-- rnb-source-end -->
 <!-- rnb-chunk-end -->
 <!-- rnb-text-begin -->
 <!-- rnb-text-end -->
 
-<div id="rmd-source-code">LS0tDQp0aXRsZTogIlIgTm90ZWJvb2siDQpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sNCi0tLQ0KDQpgYGB7cn0NCmxpYnJhcnkocnRyYWNrbGF5ZXIpDQpsaWJyYXJ5KEJTZ2Vub21lKQ0KDQojIERlZmluZSB0aGUgZ2Vub21pYyByZWdpb24gb2YgaW50ZXJlc3QNCmdlbm9tZV9uYW1lIDwtICJoZzM4Ig0KY2hyIDwtICJjaHIxIg0Kc3RhcnQgPC0gMTAwMDAwMA0KZW5kIDwtIDEwMTAwMDANCg0KIyBEZWZpbmUgdGhlIENDV1dHRyBtb3RpZiBhcyBhIEROQVN0cmluZyBvYmplY3QNCmNjd3dnZ19tb3RpZiA8LSBETkFTdHJpbmcoIkNDV1dHRyIpDQoNCiMgRmV0Y2ggdGhlIHJlZmVyZW5jZSBnZW5vbWUgc2VxdWVuY2UgZm9yIHRoZSByZWdpb24gb2YgaW50ZXJlc3QNCmdlbm9tZSA8LSBnZXRTZXF1ZW5jZShnZW5vbWVfbmFtZSwgc2VxbmFtZXM9Y2hyLCBzdGFydD1zdGFydCwgZW5kPWVuZCkNCg0KIyBGaW5kIHRoZSBwb3NpdGlvbnMgb2YgdGhlIENDV1dHRyBtb3RpZiB3aXRoaW4gdGhlIHNlcXVlbmNlDQpjY3d3Z2dfcG9zaXRpb25zIDwtIHZtYXRjaFBhdHRlcm4oY2N3d2dnX21vdGlmLCBnZW5vbWUsIG1heC5taXNtYXRjaD0xLCB3aXRoLm1pc21hdGNoPVRSVUUpDQoNCmBgYA0KDQo=</div>
+<div id="rmd-source-code">LS0tDQp0aXRsZTogIlIgTm90ZWJvb2siDQpvdXRwdXQ6IGh0bWxfbm90ZWJvb2sNCi0tLQ0KDQoNCg0KYGBge3J9DQpsaWJyYXJ5KGRhdGEudGFibGUpDQoNCnNwcml0ZSA8LSBmcmVhZCgiWjovTmF0aGFuL0NvZGUvVEZML1IvZGF0YS9TUFJJVEUvU1BSSVRFLnR4dCIsDQogICAgICAgICAgICAgICAgc2VwID0gIlx0IiwNCiAgICAgICAgICAgICAgICBoZWFkZXIgPSBGQUxTRSwNCiAgICAgICAgICAgICAgICBmaWxsID0gVFJVRSkNCg0KZnJlYWQoIlo6L05hdGhhbi9Db2RlL1RGTC9SL2RhdGEvU1BSSVRFL0dTRTE4NjI2NF9BQ1RELlJEU1BSSVRFLmNsdXN0ZXJzLnR4dCIsDQogICAgICBoZWFkZXIgPSBGQUxTRSwNCiAgICAgIHNlcCA9ICJcdCIpDQpoZWFkKCkNCmBgYA0KDQo=</div>
 
 
 

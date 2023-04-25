@@ -3,24 +3,19 @@ title: "R Notebook"
 output: html_notebook
 ---
 
+
+
 ```{r}
-library(rtracklayer)
-library(BSgenome)
+library(data.table)
 
-# Define the genomic region of interest
-genome_name <- "hg38"
-chr <- "chr1"
-start <- 1000000
-end <- 1010000
+sprite <- fread("Z:/Nathan/Code/TFL/R/data/SPRITE/SPRITE.txt",
+                sep = "\t",
+                header = FALSE,
+                fill = TRUE)
 
-# Define the CCWWGG motif as a DNAString object
-ccwwgg_motif <- DNAString("CCWWGG")
-
-# Fetch the reference genome sequence for the region of interest
-genome <- getSequence(genome_name, seqnames=chr, start=start, end=end)
-
-# Find the positions of the CCWWGG motif within the sequence
-ccwwgg_positions <- vmatchPattern(ccwwgg_motif, genome, max.mismatch=1, with.mismatch=TRUE)
-
+fread("Z:/Nathan/Code/TFL/R/data/SPRITE/GSE186264_ACTD.RDSPRITE.clusters.txt",
+      header = FALSE,
+      sep = "\t")
+head()
 ```
 
